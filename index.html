@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendario de Horarios - 2 Usuarios</title>
+  <style>
+    :root {
+      --user1: #3b82f6;
+      --user2: #10b981;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 8px;
+      font-size: 1.6rem;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 24px;
+      font-size: 0.95rem;
+    }
+
+    /* Controles superiores */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card);
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .month-nav button {
+      background: var(--border);
+      border: none;
+      color: var(--text);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: background 0.2s;
+    }
+
+    .month-nav button:hover { background: #475569; }
+
+    #monthLabel {
+      font-size: 1.25rem;
+      font-weight: 600;
+      min-width: 180px;
+      text-align: center;
+    }
+
+    .users-config {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .user-input {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-input label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .user-input input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      width: 120px;
+      font-size: 0.9rem;
+    }
+
+    .user-input input:focus {
+      outline: none;
+      border-color: var(--user1);
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-u1 { background: var(--user1); }
+    .dot-u2 { background: var(--user2); }
+
+    /* Leyenda */
+    .legend {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Calendario */
+    .calendar {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: #0f172a;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .weekdays div {
+      text-align: center;
+      padding: 12px 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+
+    .day {
+      min-height: 110px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      position: relative;
+    }
+
+    .day:nth-child(7n) { border-right: none; }
+    .day:hover { background: #273549; }
+    .day.other-month { opacity: 0.35; }
+    .day.today { background: #1e3a5f; }
+    .day.selected { outline: 2px solid #f59e0b; outline-offset: -2px; }
+
+    .day-number {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+    }
+
+    .slots {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .slot {
+      font-size: 0.7rem;
+      padding: 2px 5px;
+      border-radius: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: white;
+    }
+
+    .slot-u1 { background: var(--user1); }
+    .slot-u2 { background: var(--user2); }
+
+    /* Panel de edición */
+    .panel {
+      margin-top: 20px;
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 20px;
+      display: none;
+    }
+
+    .panel.visible { display: block; }
+
+    .panel h3 {
+      margin-bottom: 16px;
+      font-size: 1.1rem;
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .form-group input,
+    .form-group select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--user1);
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: opacity 0.2s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--user1); color: white; }
+    .btn-secondary { background: var(--user2); color: white; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .saved-list {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+
+    .saved-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+
+    .saved-item:last-child { border-bottom: none; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #10b981;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      z-index: 100;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 700px) {
+      .day { min-height: 80px; padding: 4px; }
+      .slot { font-size: 0.65rem; }
+      .controls { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📅 Calendario de Horarios</h1>
+    <p class="subtitle">Dos usuarios · Mismo mes · Horarios independientes · Guardado local</p>
+
+    <div class="controls">
+      <div class="month-nav">
+        <button id="prevMonth" title="Mes anterior">‹</button>
+        <span id="monthLabel"></span>
+        <button id="nextMonth" title="Mes siguiente">›</button>
+      </div>
+
+      <div class="users-config">
+        <div class="user-input">
+          <span class="dot dot-u1"></span>
+          <label>Usuario 1:</label>
+          <input type="text" id="name1" value="Ana" maxlength="20">
+        </div>
+        <div class="user-input">
+          <span class="dot dot-u2"></span>
+          <label>Usuario 2:</label>
+          <input type="text" id="name2" value="Carlos" maxlength="20">
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><span class="dot dot-u1"></span> <span id="legend1">Ana</span></span>
+      <span><span class="dot dot-u2"></span> <span id="legend2">Carlos</span></span>
+      <span>Haz clic en un día para agregar / editar horarios</span>
+    </div>
+
+    <div class="calendar">
+      <div class="weekdays">
+        <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div>
+        <div>Vie</div><div>Sáb</div><div>Dom</div>
+      </div>
+      <div class="days" id="daysGrid"></div>
+    </div>
+
+    <!-- Panel de edición del día seleccionado -->
+    <div class="panel" id="editPanel">
+      <h3 id="panelTitle">Horarios del día</h3>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Usuario</label>
+          <select id="slotUser">
+            <option value="1">Usuario 1</option>
+            <option value="2">Usuario 2</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Desde</label>
+          <input type="time" id="slotStart" value="09:00">
+        </div>
+        <div class="form-group">
+          <label>Hasta</label>
+          <input type="time" id="slotEnd" value="10:00">
+        </div>
+        <div class="form-group">
+          <label>Nota (opcional)</label>
+          <input type="text" id="slotNote" placeholder="Reunión, gym..." maxlength="40">
+        </div>
+        <button class="btn btn-primary" id="addSlotBtn">+ Agregar</button>
+      </div>
+
+      <div class="saved-list" id="daySlotsList"></div>
+
+      <div class="actions">
+        <button class="btn btn-ghost" id="closePanelBtn">Cerrar</button>
+        <button class="btn btn-danger" id="clearDayBtn">Borrar todo el día</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ========== ESTADO ==========
+    const STORAGE_KEY = 'calendario_horarios_v1';
+
+    let currentDate = new Date();
+    currentDate.setDate(1); // primer día del mes
+
+    let selectedDate = null; // "YYYY-MM-DD"
+    let data = loadData();   // { "2025-03-15": [ {user:1, start:"09:00", end:"10:00", note:""}, ... ] }
+
+    // ========== NOMBRES ==========
+    const name1Input = document.getElementById('name1');
+    const name2Input = document.getElementById('name2');
+    const legend1 = document.getElementById('legend1');
+    const legend2 = document.getElementById('legend2');
+    const slotUserSelect = document.getElementById('slotUser');
+
+    function updateNames() {
+      const n1 = name1Input.value.trim() || 'Usuario 1';
+      const n2 = name2Input.value.trim() || 'Usuario 2';
+      legend1.textContent = n1;
+      legend2.textContent = n2;
+      slotUserSelect.options[0].text = n1;
+      slotUserSelect.options[1].text = n2;
+      saveNames();
+      renderCalendar();
+      if (selectedDate) renderDaySlots();
+    }
+
+    name1Input.addEventListener('change', updateNames);
+    name2Input.addEventListener('change', updateNames);
+    name1Input.addEventListener('blur', updateNames);
+    name2Input.addEventListener('blur', updateNames);
+
+    function saveNames() {
+      data.__names = {
+        1: name1Input.value.trim() || 'Usuario 1',
+        2: name2Input.value.trim() || 'Usuario 2'
+      };
+      persist();
+    }
+
+    function loadNames() {
+      if (data.__names) {
+        name1Input.value = data.__names[1] || 'Ana';
+        name2Input.value = data.__names[2] || 'Carlos';
+      }
+      updateNames();
+    }
+
+    // ========== LOCAL STORAGE ==========
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    // ========== UTILIDADES ==========
+    function toKey(year, month, day) {
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
+    function formatDateES(key) {
+      const [y, m, d] = key.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      return date.toLocaleDateString('es-ES', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+      });
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    // ========== RENDER CALENDARIO ==========
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      const monthNames = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
+      document.getElementById('monthLabel').textContent = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1);
+      let startWeekday = firstDay.getDay(); // 0=Dom
+      startWeekday = startWeekday === 0 ? 6 : startWeekday - 1; // Lunes=0
+
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const daysInPrev = new Date(year, month, 0).getDate();
+
+      const today = new Date();
+      const todayKey = toKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+      const grid = document.getElementById('daysGrid');
+      grid.innerHTML = '';
+
+      // Días del mes anterior
+      for (let i = startWeekday - 1; i >= 0; i--) {
+        const d = daysInPrev - i;
+        const cell = createDayCell(year, month - 1, d, true);
+        grid.appendChild(cell);
+      }
+
+      // Días del mes actual
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = toKey(year, month, d);
+        const cell = createDayCell(year, month, d, false);
+        if (key === todayKey) cell.classList.add('today');
+        if (key === selectedDate) cell.classList.add('selected');
+        grid.appendChild(cell);
+      }
+
+      // Días del mes siguiente para completar la grilla
+      const totalCells = grid.children.length;
+      const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (let d = 1; d <= remaining; d++) {
+        const cell = createDayCell(year, month + 1, d, true);
+        grid.appendChild(cell);
+      }
+    }
+
+    function createDayCell(year, month, day, other) {
+      // Ajuste de mes/año si sale del rango
+      let realYear = year;
+      let realMonth = month;
+      if (realMonth < 0) { realMonth = 11; realYear--; }
+      if (realMonth > 11) { realMonth = 0; realYear++; }
+
+      const key = toKey(realYear, realMonth, day);
+      const cell = document.createElement('div');
+      cell.className = 'day' + (other ? ' other-month' : '');
+      cell.dataset.key = key;
+
+      const num = document.createElement('div');
+      num.className = 'day-number';
+      num.textContent = day;
+      cell.appendChild(num);
+
+      const slotsDiv = document.createElement('div');
+      slotsDiv.className = 'slots';
+
+      const slots = data[key] || [];
+      slots.forEach(s => {
+        const el = document.createElement('div');
+        el.className = `slot slot-u${s.user}`;
+        const name = data.__names?.[s.user] || (s.user === 1 ? 'U1' : 'U2');
+        el.textContent = `${s.start}-${s.end}${s.note ? ' · ' + s.note : ''}`;
+        el.title = `${name}: ${s.start} - ${s.end}${s.note ? ' (' + s.note + ')' : ''}`;
+        slotsDiv.appendChild(el);
+      });
+
+      cell.appendChild(slotsDiv);
+
+      cell.addEventListener('click', () => {
+        if (other) return; // no editar otros meses desde aquí
+        selectDay(key);
+      });
+
+      return cell;
+    }
+
+    // ========== SELECCIÓN DE DÍA ==========
+    function selectDay(key) {
+      selectedDate = key;
+      document.getElementById('panelTitle').textContent =
+        'Horarios · ' + formatDateES(key);
+      document.getElementById('editPanel').classList.add('visible');
+      renderDaySlots();
+      renderCalendar(); // para marcar .selected
+      document.getElementById('editPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function renderDaySlots() {
+      const list = document.getElementById('daySlotsList');
+      list.innerHTML = '';
+      const slots = data[selectedDate] || [];
+
+      if (slots.length === 0) {
+        list.innerHTML = '<p style="color:var(--muted);font-size:0.9rem;">Sin horarios aún. Agrega uno arriba.</p>';
+        return;
+      }
+
+      // Ordenar por hora de inicio
+      const sorted = [...slots].sort((a, b) => a.start.localeCompare(b.start));
+
+      sorted.forEach((s, idx) => {
+        const originalIdx = slots.indexOf(s);
+        const name = data.__names?.[s.user] || (s.user === 1 ? 'Usuario 1' : 'Usuario 2');
+        const item = document.createElement('div');
+        item.className = 'saved-item';
+        item.innerHTML = `
+          <span>
+            <span class="dot ${s.user === 1 ? 'dot-u1' : 'dot-u2'}"></span>
+            <strong>${name}</strong> · ${s.start} – ${s.end}
+            ${s.note ? `<span style="color:var(--muted)"> · ${s.note}</span>` : ''}
+          </span>
+          <button class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem;" data-idx="${originalIdx}">Eliminar</button>
+        `;
+        item.querySelector('button').addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeSlot(originalIdx);
+        });
+        list.appendChild(item);
+      });
+    }
+
+    // ========== AGREGAR / ELIMINAR ==========
+    document.getElementById('addSlotBtn').addEventListener('click', () => {
+      if (!selectedDate) return;
+
+      const user = Number(document.getElementById('slotUser').value);
+      const start = document.getElementById('slotStart').value;
+      const end = document.getElementById('slotEnd').value;
+      const note = document.getElementById('slotNote').value.trim();
+
+      if (!start || !end) {
+        showToast('Completa las horas');
+        return;
+      }
+      if (start >= end) {
+        showToast('La hora de fin debe ser posterior al inicio');
+        return;
+      }
+
+      if (!data[selectedDate]) data[selectedDate] = [];
+      data[selectedDate].push({ user, start, end, note });
+      persist();
+      renderDaySlots();
+      renderCalendar();
+      document.getElementById('slotNote').value = '';
+      showToast('Horario guardado ✓');
+    });
+
+    function removeSlot(idx) {
+      if (!selectedDate || !data[selectedDate]) return;
+      data[selectedDate].splice(idx, 1);
+      if (data[selectedDate].length === 0) delete data[selectedDate];
+      persist();
+      renderDaySlots();
+      renderCalendar();
+      showToast('Horario eliminado');
+    }
+
+    document.getElementById('clearDayBtn').addEventListener('click', () => {
+      if (!selectedDate) return;
+      if (!confirm('¿Borrar todos los horarios de este día?')) return;
+      delete data[selectedDate];
+      persist();
+      renderDaySlots();
+      renderCalendar();
+      showToast('Día limpiado');
+    });
+
+    document.getElementById('closePanelBtn').addEventListener('click', () => {
+      selectedDate = null;
+      document.getElementById('editPanel').classList.remove('visible');
+      renderCalendar();
+    });
+
+    // ========== NAVEGACIÓN ==========
+    document.getElementById('prevMonth').addEventListener('click', () => {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      selectedDate = null;
+      document.getElementById('editPanel').classList.remove('visible');
+      renderCalendar();
+    });
+
+    document.getElementById('nextMonth').addEventListener('click', () => {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      selectedDate = null;
+      document.getElementById('editPanel').classList.remove('visible');
+      renderCalendar();
+    });
+
+    // ========== INICIO ==========
+    loadNames();
+    renderCalendar();
+  </script>
+</body>
+</html>
