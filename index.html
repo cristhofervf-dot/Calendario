@@ -8,6 +8,7 @@
     :root {
       --user1: #3b82f6;
       --user2: #10b981;
+      --free: #f59e0b;
       --bg: #0f172a;
       --card: #1e293b;
       --text: #f1f5f9;
@@ -88,6 +89,7 @@
       display: flex;
       gap: 16px;
       flex-wrap: wrap;
+      align-items: center;
     }
 
     .user-input {
@@ -121,10 +123,19 @@
       height: 12px;
       border-radius: 50%;
       display: inline-block;
+      flex-shrink: 0;
     }
 
     .dot-u1 { background: var(--user1); }
     .dot-u2 { background: var(--user2); }
+    .dot-free { background: var(--free); }
+
+    /* Botones de backup */
+    .backup-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
 
     /* Leyenda */
     .legend {
@@ -186,11 +197,15 @@
     .day.other-month { opacity: 0.35; }
     .day.today { background: #1e3a5f; }
     .day.selected { outline: 2px solid #f59e0b; outline-offset: -2px; }
+    .day.has-free { background: rgba(245, 158, 11, 0.08); }
 
     .day-number {
       font-weight: 600;
       font-size: 0.95rem;
       margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .slots {
@@ -211,6 +226,11 @@
 
     .slot-u1 { background: var(--user1); }
     .slot-u2 { background: var(--user2); }
+    .slot-free {
+      background: var(--free);
+      color: #1e293b;
+      font-weight: 600;
+    }
 
     /* Panel de edición */
     .panel {
@@ -277,11 +297,16 @@
     .btn:hover { opacity: 0.85; }
     .btn-primary { background: var(--user1); color: white; }
     .btn-secondary { background: var(--user2); color: white; }
+    .btn-free { background: var(--free); color: #1e293b; font-weight: 600; }
     .btn-danger { background: #ef4444; color: white; }
     .btn-ghost {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--muted);
+    }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.8rem;
     }
 
     .actions {
@@ -289,6 +314,15 @@
       gap: 10px;
       margin-top: 8px;
       flex-wrap: wrap;
+    }
+
+    .free-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
     }
 
     .saved-list {
@@ -304,6 +338,7 @@
       padding: 8px 0;
       border-bottom: 1px solid var(--border);
       font-size: 0.9rem;
+      gap: 8px;
     }
 
     .saved-item:last-child { border-bottom: none; }
@@ -321,6 +356,7 @@
       transform: translateY(10px);
       transition: all 0.3s;
       z-index: 100;
+      max-width: 320px;
     }
 
     .toast.show {
@@ -328,17 +364,29 @@
       transform: translateY(0);
     }
 
+    .toast.error { background: #ef4444; }
+
+    /* Modal de backup info */
+    .backup-info {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    input[type="file"] { display: none; }
+
     @media (max-width: 700px) {
       .day { min-height: 80px; padding: 4px; }
       .slot { font-size: 0.65rem; }
       .controls { flex-direction: column; align-items: stretch; }
+      .backup-btns { justify-content: flex-start; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>📅 Calendario de Horarios</h1>
-    <p class="subtitle">Dos usuarios · Mismo mes · Horarios independientes · Guardado local</p>
+    <p class="subtitle">Dos usuarios · Mismo mes · Horarios independientes · Día libre · Copia de seguridad</p>
 
     <div class="controls">
       <div class="month-nav">
@@ -358,13 +406,19 @@
           <label>Usuario 2:</label>
           <input type="text" id="name2" value="Carlos" maxlength="20">
         </div>
+        <div class="backup-btns">
+          <button class="btn btn-ghost btn-sm" id="exportBtn" title="Descargar copia de seguridad">⬇ Exportar</button>
+          <button class="btn btn-ghost btn-sm" id="importBtn" title="Restaurar desde archivo">⬆ Importar</button>
+          <input type="file" id="importFile" accept=".json,application/json">
+        </div>
       </div>
     </div>
 
     <div class="legend">
       <span><span class="dot dot-u1"></span> <span id="legend1">Ana</span></span>
       <span><span class="dot dot-u2"></span> <span id="legend2">Carlos</span></span>
-      <span>Haz clic en un día para agregar / editar horarios</span>
+      <span><span class="dot dot-free"></span> Día libre</span>
+      <span>Haz clic en un día para agregar / editar</span>
     </div>
 
     <div class="calendar">
@@ -378,6 +432,13 @@
     <!-- Panel de edición del día seleccionado -->
     <div class="panel" id="editPanel">
       <h3 id="panelTitle">Horarios del día</h3>
+
+      <!-- Día libre -->
+      <div class="free-actions">
+        <button class="btn btn-free btn-sm" id="freeUser1Btn">🏖 Día libre · Usuario 1</button>
+        <button class="btn btn-free btn-sm" id="freeUser2Btn">🏖 Día libre · Usuario 2</button>
+        <button class="btn btn-ghost btn-sm" id="freeBothBtn">🏖 Día libre · Ambos</button>
+      </div>
 
       <div class="form-row">
         <div class="form-group">
@@ -399,7 +460,7 @@
           <label>Nota (opcional)</label>
           <input type="text" id="slotNote" placeholder="Reunión, gym..." maxlength="40">
         </div>
-        <button class="btn btn-primary" id="addSlotBtn">+ Agregar</button>
+        <button class="btn btn-primary" id="addSlotBtn">+ Agregar horario</button>
       </div>
 
       <div class="saved-list" id="daySlotsList"></div>
@@ -415,13 +476,13 @@
 
   <script>
     // ========== ESTADO ==========
-    const STORAGE_KEY = 'calendario_horarios_v1';
+    const STORAGE_KEY = 'calendario_horarios_v2';
 
     let currentDate = new Date();
-    currentDate.setDate(1); // primer día del mes
+    currentDate.setDate(1);
 
-    let selectedDate = null; // "YYYY-MM-DD"
-    let data = loadData();   // { "2025-03-15": [ {user:1, start:"09:00", end:"10:00", note:""}, ... ] }
+    let selectedDate = null;
+    let data = loadData();
 
     // ========== NOMBRES ==========
     const name1Input = document.getElementById('name1');
@@ -437,6 +498,8 @@
       legend2.textContent = n2;
       slotUserSelect.options[0].text = n1;
       slotUserSelect.options[1].text = n2;
+      document.getElementById('freeUser1Btn').textContent = '🏖 Día libre · ' + n1;
+      document.getElementById('freeUser2Btn').textContent = '🏖 Día libre · ' + n2;
       saveNames();
       renderCalendar();
       if (selectedDate) renderDaySlots();
@@ -467,7 +530,15 @@
     function loadData() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : {};
+        if (raw) return JSON.parse(raw);
+        // Migrar de versión anterior si existe
+        const old = localStorage.getItem('calendario_horarios_v1');
+        if (old) {
+          const parsed = JSON.parse(old);
+          localStorage.setItem(STORAGE_KEY, old);
+          return parsed;
+        }
+        return {};
       } catch {
         return {};
       }
@@ -490,11 +561,16 @@
       });
     }
 
-    function showToast(msg) {
+    function showToast(msg, isError = false) {
       const t = document.getElementById('toast');
       t.textContent = msg;
+      t.classList.toggle('error', isError);
       t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2200);
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function getUserName(user) {
+      return data.__names?.[user] || (user === 1 ? 'Usuario 1' : 'Usuario 2');
     }
 
     // ========== RENDER CALENDARIO ==========
@@ -509,8 +585,8 @@
       document.getElementById('monthLabel').textContent = `${monthNames[month]} ${year}`;
 
       const firstDay = new Date(year, month, 1);
-      let startWeekday = firstDay.getDay(); // 0=Dom
-      startWeekday = startWeekday === 0 ? 6 : startWeekday - 1; // Lunes=0
+      let startWeekday = firstDay.getDay();
+      startWeekday = startWeekday === 0 ? 6 : startWeekday - 1;
 
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const daysInPrev = new Date(year, month, 0).getDate();
@@ -521,14 +597,11 @@
       const grid = document.getElementById('daysGrid');
       grid.innerHTML = '';
 
-      // Días del mes anterior
       for (let i = startWeekday - 1; i >= 0; i--) {
         const d = daysInPrev - i;
-        const cell = createDayCell(year, month - 1, d, true);
-        grid.appendChild(cell);
+        grid.appendChild(createDayCell(year, month - 1, d, true));
       }
 
-      // Días del mes actual
       for (let d = 1; d <= daysInMonth; d++) {
         const key = toKey(year, month, d);
         const cell = createDayCell(year, month, d, false);
@@ -537,17 +610,14 @@
         grid.appendChild(cell);
       }
 
-      // Días del mes siguiente para completar la grilla
       const totalCells = grid.children.length;
       const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
       for (let d = 1; d <= remaining; d++) {
-        const cell = createDayCell(year, month + 1, d, true);
-        grid.appendChild(cell);
+        grid.appendChild(createDayCell(year, month + 1, d, true));
       }
     }
 
     function createDayCell(year, month, day, other) {
-      // Ajuste de mes/año si sale del rango
       let realYear = year;
       let realMonth = month;
       if (realMonth < 0) { realMonth = 11; realYear--; }
@@ -558,6 +628,10 @@
       cell.className = 'day' + (other ? ' other-month' : '');
       cell.dataset.key = key;
 
+      const slots = data[key] || [];
+      const hasFree = slots.some(s => s.free);
+      if (hasFree) cell.classList.add('has-free');
+
       const num = document.createElement('div');
       num.className = 'day-number';
       num.textContent = day;
@@ -566,20 +640,24 @@
       const slotsDiv = document.createElement('div');
       slotsDiv.className = 'slots';
 
-      const slots = data[key] || [];
       slots.forEach(s => {
         const el = document.createElement('div');
-        el.className = `slot slot-u${s.user}`;
-        const name = data.__names?.[s.user] || (s.user === 1 ? 'U1' : 'U2');
-        el.textContent = `${s.start}-${s.end}${s.note ? ' · ' + s.note : ''}`;
-        el.title = `${name}: ${s.start} - ${s.end}${s.note ? ' (' + s.note + ')' : ''}`;
+        if (s.free) {
+          el.className = 'slot slot-free';
+          el.textContent = '🏖 ' + getUserName(s.user);
+          el.title = 'Día libre: ' + getUserName(s.user);
+        } else {
+          el.className = `slot slot-u${s.user}`;
+          el.textContent = `${s.start}-${s.end}${s.note ? ' · ' + s.note : ''}`;
+          el.title = `${getUserName(s.user)}: ${s.start} - ${s.end}${s.note ? ' (' + s.note + ')' : ''}`;
+        }
         slotsDiv.appendChild(el);
       });
 
       cell.appendChild(slotsDiv);
 
       cell.addEventListener('click', () => {
-        if (other) return; // no editar otros meses desde aquí
+        if (other) return;
         selectDay(key);
       });
 
@@ -593,7 +671,7 @@
         'Horarios · ' + formatDateES(key);
       document.getElementById('editPanel').classList.add('visible');
       renderDaySlots();
-      renderCalendar(); // para marcar .selected
+      renderCalendar();
       document.getElementById('editPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -603,26 +681,42 @@
       const slots = data[selectedDate] || [];
 
       if (slots.length === 0) {
-        list.innerHTML = '<p style="color:var(--muted);font-size:0.9rem;">Sin horarios aún. Agrega uno arriba.</p>';
+        list.innerHTML = '<p style="color:var(--muted);font-size:0.9rem;">Sin horarios ni días libres. Agrega uno arriba.</p>';
         return;
       }
 
-      // Ordenar por hora de inicio
-      const sorted = [...slots].sort((a, b) => a.start.localeCompare(b.start));
+      const sorted = [...slots].sort((a, b) => {
+        if (a.free && !b.free) return -1;
+        if (!a.free && b.free) return 1;
+        if (a.free && b.free) return a.user - b.user;
+        return (a.start || '').localeCompare(b.start || '');
+      });
 
-      sorted.forEach((s, idx) => {
+      sorted.forEach((s) => {
         const originalIdx = slots.indexOf(s);
-        const name = data.__names?.[s.user] || (s.user === 1 ? 'Usuario 1' : 'Usuario 2');
+        const name = getUserName(s.user);
         const item = document.createElement('div');
         item.className = 'saved-item';
-        item.innerHTML = `
-          <span>
-            <span class="dot ${s.user === 1 ? 'dot-u1' : 'dot-u2'}"></span>
-            <strong>${name}</strong> · ${s.start} – ${s.end}
-            ${s.note ? `<span style="color:var(--muted)"> · ${s.note}</span>` : ''}
-          </span>
-          <button class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem;" data-idx="${originalIdx}">Eliminar</button>
-        `;
+
+        if (s.free) {
+          item.innerHTML = `
+            <span>
+              <span class="dot dot-free"></span>
+              <strong>🏖 Día libre</strong> · ${name}
+            </span>
+            <button class="btn btn-danger btn-sm" data-idx="${originalIdx}">Eliminar</button>
+          `;
+        } else {
+          item.innerHTML = `
+            <span>
+              <span class="dot ${s.user === 1 ? 'dot-u1' : 'dot-u2'}"></span>
+              <strong>${name}</strong> · ${s.start} – ${s.end}
+              ${s.note ? `<span style="color:var(--muted)"> · ${s.note}</span>` : ''}
+            </span>
+            <button class="btn btn-danger btn-sm" data-idx="${originalIdx}">Eliminar</button>
+          `;
+        }
+
         item.querySelector('button').addEventListener('click', (e) => {
           e.stopPropagation();
           removeSlot(originalIdx);
@@ -631,7 +725,7 @@
       });
     }
 
-    // ========== AGREGAR / ELIMINAR ==========
+    // ========== AGREGAR HORARIO ==========
     document.getElementById('addSlotBtn').addEventListener('click', () => {
       if (!selectedDate) return;
 
@@ -641,16 +735,22 @@
       const note = document.getElementById('slotNote').value.trim();
 
       if (!start || !end) {
-        showToast('Completa las horas');
+        showToast('Completa las horas', true);
         return;
       }
       if (start >= end) {
-        showToast('La hora de fin debe ser posterior al inicio');
+        showToast('La hora de fin debe ser posterior al inicio', true);
         return;
       }
 
+      // Si ya tiene día libre para ese usuario, avisar
+      const existing = data[selectedDate] || [];
+      if (existing.some(s => s.user === user && s.free)) {
+        if (!confirm(getUserName(user) + ' ya tiene día libre. ¿Agregar horario de todas formas?')) return;
+      }
+
       if (!data[selectedDate]) data[selectedDate] = [];
-      data[selectedDate].push({ user, start, end, note });
+      data[selectedDate].push({ user, start, end, note, free: false });
       persist();
       renderDaySlots();
       renderCalendar();
@@ -658,6 +758,34 @@
       showToast('Horario guardado ✓');
     });
 
+    // ========== DÍA LIBRE ==========
+    function markFreeDay(user) {
+      if (!selectedDate) return;
+
+      if (!data[selectedDate]) data[selectedDate] = [];
+
+      // Evitar duplicados de día libre para el mismo usuario
+      const already = data[selectedDate].findIndex(s => s.user === user && s.free);
+      if (already !== -1) {
+        showToast(getUserName(user) + ' ya tiene día libre marcado');
+        return;
+      }
+
+      data[selectedDate].push({ user, free: true });
+      persist();
+      renderDaySlots();
+      renderCalendar();
+      showToast('Día libre marcado · ' + getUserName(user));
+    }
+
+    document.getElementById('freeUser1Btn').addEventListener('click', () => markFreeDay(1));
+    document.getElementById('freeUser2Btn').addEventListener('click', () => markFreeDay(2));
+    document.getElementById('freeBothBtn').addEventListener('click', () => {
+      markFreeDay(1);
+      markFreeDay(2);
+    });
+
+    // ========== ELIMINAR ==========
     function removeSlot(idx) {
       if (!selectedDate || !data[selectedDate]) return;
       data[selectedDate].splice(idx, 1);
@@ -665,12 +793,12 @@
       persist();
       renderDaySlots();
       renderCalendar();
-      showToast('Horario eliminado');
+      showToast('Eliminado');
     }
 
     document.getElementById('clearDayBtn').addEventListener('click', () => {
       if (!selectedDate) return;
-      if (!confirm('¿Borrar todos los horarios de este día?')) return;
+      if (!confirm('¿Borrar todos los horarios y días libres de este día?')) return;
       delete data[selectedDate];
       persist();
       renderDaySlots();
@@ -697,6 +825,63 @@
       selectedDate = null;
       document.getElementById('editPanel').classList.remove('visible');
       renderCalendar();
+    });
+
+    // ========== COPIA DE SEGURIDAD ==========
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const exportData = {
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        data: data
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `calendario-backup-${dateStr}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Copia de seguridad descargada ✓');
+    });
+
+    document.getElementById('importBtn').addEventListener('click', () => {
+      document.getElementById('importFile').click();
+    });
+
+    document.getElementById('importFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const parsed = JSON.parse(ev.target.result);
+          // Aceptar formato nuevo { version, data } o el objeto directo
+          const incoming = parsed.data !== undefined ? parsed.data : parsed;
+
+          if (typeof incoming !== 'object' || incoming === null) {
+            throw new Error('Formato inválido');
+          }
+
+          if (!confirm('¿Restaurar la copia de seguridad? Se reemplazarán los datos actuales.')) {
+            e.target.value = '';
+            return;
+          }
+
+          data = incoming;
+          persist();
+          loadNames();
+          selectedDate = null;
+          document.getElementById('editPanel').classList.remove('visible');
+          renderCalendar();
+          showToast('Copia de seguridad restaurada ✓');
+        } catch (err) {
+          showToast('Error al importar: archivo no válido', true);
+        }
+        e.target.value = '';
+      };
+      reader.readAsText(file);
     });
 
     // ========== INICIO ==========
